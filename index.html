@@ -59,6 +59,12 @@
   button:hover{background:#2a2531;transform:translateY(-1px)}
   button.primary{background:#5b1d1d;border-color:#8a2a2a}
   button.primary:hover{background:#7a2424}
+  button.read{background:#17462a;border-color:#2a8a4c;color:#e6ffe9}
+  button.read:hover{background:#1f5c37}
+  button.skip{background:#5b1d1d;border-color:#a33232;color:#ffe9e9}
+  button.skip:hover{background:#7a2424}
+  button.next{background:#4a3612;border-color:#b5843a;color:#ffe2b0}
+  button.next:hover{background:#5e4518}
   button:disabled{opacity:.35;cursor:default;transform:none}
 
   #chat{width:300px;border-left:1px solid var(--line);background:rgba(12,11,15,.85);display:flex;flex-direction:column}
@@ -138,6 +144,8 @@
   .voicectl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim)}
   .voicectl button{padding:4px 8px;font-size:16px;border-radius:8px}
   .voicectl input{width:90px;accent-color:var(--amber)}
+  button.restart{padding:6px 14px;font-size:14px;border-radius:8px}
+  button.restart.confirm{background:#5b1d1d;border-color:#8a2a2a}
 </style>
 <script>
 /* 방문수: GitHub Pages 주소에서만 GoatCounter(zkyzky)로 셈 */
@@ -151,6 +159,7 @@ if(/github\.io$/.test(location.hostname)){ const g=document.createElement('scrip
     <span class="onair" id="onair">ON AIR</span>
     <span class="title">즈키의 심야라디오 📻</span>
     <span class="spacer"></span>
+    <button id="restartBtn" type="button" class="restart" hidden>↺ 다시 하기</button>
     <span class="voicectl" title="즈키 목소리 볼륨"><button id="muteBtn" type="button">🔊</button><input id="volRange" type="range" min="0" max="100" value="90"></span>
   </header>
   <div id="goal">🎯 <b>목표</b> · 새벽 <b>04:00</b>까지 방송 지키기 — 쿠식이가 <b>0명</b>이 되거나 즈키 멘탈이 <b>30 이하</b>로 무너지면 실패!</div>
@@ -234,7 +243,7 @@ function knock(delay=0){
 function glitchSound(){
   if(!AC) return; const t=AC.currentTime, len=AC.sampleRate*.35, b=AC.createBuffer(1,len,AC.sampleRate), d=b.getChannelData(0);
   for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(Math.sin(i/40)>0?1:.2);
-  const s=AC.createBufferSource(), g=AC.createGain(); s.buffer=b; g.gain.value=.12; s.connect(g).connect(AC.destination); s.start(t);
+  const s=AC.createBufferSource(), g=AC.createGain(); s.buffer=b; g.gain.value=.03; s.connect(g).connect(AC.destination); s.start(t);
 }
 function heartbeat(n=3){ for(let i=0;i<n;i++){ tone(55,.15,'sine',.4,i*.8); tone(50,.15,'sine',.3,i*.8+.22); } }
 /* 방송에서 읽기: 마이크 '톡' + 주파수 맞추는 소리 + 온에어 차임 */
@@ -409,7 +418,9 @@ function setZukiStage(m){
   seat.classList.toggle('scared', stage>=1);
 }
 function glitch(){ $('app').classList.add('glitch'); glitchSound(); setTimeout(()=>$('app').classList.remove('glitch'),600); }
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+let RUN=0;
+/* 판이 바뀌면(다시 하기) 이전 판의 기다림은 멈춰서 진행이 섞이지 않음 */
+function sleep(ms){const r=RUN; return new Promise(res=>setTimeout(()=>{ if(r===RUN) res(); },ms));}
 async function typeInto(el,text,speed=28){
   el.textContent=''; for(const ch of text){ el.textContent+=ch; if(ch.trim()) blip(); await sleep(ch==='\n'?speed*6:speed); }
 }
@@ -420,7 +431,7 @@ async function djSay(text,vkey,opt){
 }
 function setChoices(list){
   const box=$('choices'); box.innerHTML='';
-  list.forEach(([label,fn,primary])=>{ const b=document.createElement('button'); b.textContent=label; if(primary) b.className='primary';
+  list.forEach(([label,fn,primary])=>{ const b=document.createElement('button'); b.textContent=label; if(primary) b.className= primary===true?'primary':primary;
     b.onclick=()=>{ [...box.children].forEach(x=>x.disabled=true); fn(); }; box.appendChild(b); });
 }
 
@@ -450,9 +461,9 @@ async function showStory(){
   if(s.type==='final'){ glitch(); heartbeat(3); }
   await typeInto($('body'),s.body, s.type==='final'?55:26);
   if(s.type==='final'){
-    setChoices([['📻 방송에서 읽기',()=>finalRead(),true],['🗑️ 넘기고 방송 끝내기',()=>finalSkip()]]);
+    setChoices([['📻 방송에서 읽기',()=>finalRead(),'read'],['🗑️ 넘기고 방송 끝내기',()=>finalSkip(),'skip']]);
   }else{
-    setChoices([['📻 방송에서 읽기',()=>choose(true),true],['🗑️ 넘기기',()=>choose(false)]]);
+    setChoices([['📻 방송에서 읽기',()=>choose(true),'read'],['🗑️ 넘기기',()=>choose(false),'skip']]);
   }
 }
 
@@ -466,19 +477,19 @@ async function choose(read){
     else { S.listeners+=15; if(s.mild) S.dist+=5; }
     updateHUD();
     if(s.type==='creepy' && S.dist>=35) glitch();
-    s.chatRead.forEach((t,i)=>setTimeout(()=>chat(t),400+i*700));
+    {const r=RUN; s.chatRead.forEach((t,i)=>setTimeout(()=>{ if(r===RUN) chat(t); },400+i*700));}
     await djSay(s.read);
   }else{
     $('stamp').classList.add('show');
     if(s.type==='creepy'){ S.listeners-=22; S.dist+=4; }
     else S.listeners-=12;
     updateHUD();
-    s.chatSkip.forEach((t,i)=>setTimeout(()=>chat(t),400+i*700));
+    {const r=RUN; s.chatSkip.forEach((t,i)=>setTimeout(()=>{ if(r===RUN) chat(t); },400+i*700));}
     await djSay(s.skip);
   }
   if(S.listeners<=0){ S.listeners=0; updateHUD(); await sleep(1200); return ending('nobody'); }
   await sleep(1300);
-  setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},true]]);
+  setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},'next']]);
 }
 
 async function knockEvent(){
@@ -494,13 +505,13 @@ async function knockEvent(){
       S.dist+=15; updateHUD(); glitch();
       await djSay('아무도 없어요. 그런데… 문 앞 바닥에 젖은 발자국이 있어요. 문 앞에서 딱 멈춰 있어요. 나간 발자국은, 없어요.');
       chat('나간 발자국이 없다고??'); chat('들어온 거네',null,true);
-      await sleep(1200); setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},true]]);
+      await sleep(1200); setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},'next']]);
     },true],
     ['🎧 무시하고 방송을 계속한다',async()=>{
       S.dist+=6; S.listeners-=6; updateHUD();
       await djSay('…아, 아니에요. 바람 소리겠죠. 다음 사연 읽을게요.');
       chat('즈키님 목소리 떨려요'); knock(.2);
-      await sleep(1200); setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},true]]);
+      await sleep(1200); setChoices([['다음 사연 ▶',()=>{S.step++; showStory();},'next']]);
     }]]);
 }
 
@@ -586,25 +597,30 @@ async function ending(key){
   const e=ENDINGS[key];
   if(key==='true'||key==='loop') glitch();
   setStatic(key==='nobody'?0.004:0.0012);
-  setTimeout(()=>musicEnding(key), 700);
+  {const r=RUN; setTimeout(()=>{ if(r===RUN) musicEnding(key); }, 700);}
   if(!SEEN.includes(key)){ SEEN.push(key); saveSeen(SEEN); }
   renderCollection();
   $('onair').classList.toggle('live', key==='true');
   $('endZuki').className=key; $('endTag').textContent=e.tag; $('endTitle').textContent=e.title; $('endText').textContent=e.text;
   $('endStats').textContent=`읽은 사연 ${S.readCount}개 · 쿠식이 ${Math.max(0,Math.round(S.listeners))}명 · 즈키 멘탈 ${Math.max(0,100-Math.min(100,Math.round(S.dist)))}  ·  엔딩은 총 4가지예요`;
-  setTimeout(()=>$('endScreen').classList.remove('hide'), key==='true'?400:900);
+  {const r=RUN; setTimeout(()=>{ if(r===RUN) $('endScreen').classList.remove('hide'); }, key==='true'?400:900);}
 }
 
 function start(){
+  RUN++;
   stopVoices(); reset(); updateHUD();
   $('log').innerHTML=''; $('dj').innerHTML=''; $('choices').innerHTML='';
+  $('card').classList.add('hidden'); $('stamp').classList.remove('show'); $('stampRead').classList.remove('show');
+  $('from').textContent=''; $('ctime').textContent=''; $('body').textContent=''; $('clock').textContent='01:00';
   $('titleScreen').classList.add('hide'); $('endScreen').classList.add('hide');
-  $('onair').classList.add('live');
+  $('onair').classList.add('live'); $('restartBtn').hidden=false;
   if(!AC) initAudio(); else if(AC.state==='suspended') AC.resume();
   jingle();
   chat('오 방송 시작했다'); setTimeout(()=>chat('오늘도 왔어요~'),700); setTimeout(()=>chat('사연 많이 읽어주세요!'),1500);
   startAmbient();
+  const myRun=RUN;
   setTimeout(async()=>{
+    if(myRun!==RUN) return;
     await djSay('새벽 1시네요. 안녕하세요, 즈키의 심야라디오입니다. 오늘도 여러분의 사연을 기다리고 있었어요.','o01');
     await sleep(500);
     await djSay('자, 첫 번째 사연 읽어볼게요.','o02');
@@ -613,6 +629,12 @@ function start(){
   },1400);
 }
 $('startBtn').onclick=start;
+let _rsTimer=null;
+$('restartBtn').onclick=()=>{
+  const b=$('restartBtn');
+  if(!b.classList.contains('confirm')){ b.classList.add('confirm'); b.textContent='한 번 더 누르면 처음부터'; clearTimeout(_rsTimer); _rsTimer=setTimeout(()=>{b.classList.remove('confirm'); b.textContent='↺ 다시 하기';},2500); return; }
+  clearTimeout(_rsTimer); b.classList.remove('confirm'); b.textContent='↺ 다시 하기'; start();
+};
 $('muteBtn').onclick=()=>{ MUTED=!MUTED; if(!MUTED&&VOL<=0) VOL=.9; if(MUTED) stopVoices(); try{localStorage.setItem('zkyRadioMute',MUTED?'1':'0');localStorage.setItem('zkyRadioVol',VOL)}catch(e){} voiceUI(); };
 $('volRange').oninput=e=>{ VOL=e.target.value/100; MUTED=false; curVoices.forEach(a=>a.volume=Math.min(1,VOL)); try{localStorage.setItem('zkyRadioVol',VOL);localStorage.setItem('zkyRadioMute','0')}catch(e){} voiceUI(); };
 voiceUI();
