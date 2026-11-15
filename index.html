@@ -45,8 +45,8 @@
   #card .from b{color:var(--ink)}
   #card .body{font-size:20px;line-height:1.75;min-height:120px;white-space:pre-wrap}
   #card.hidden{opacity:0;transform:translateY(16px) rotate(-.6deg)}
-  #card .stamp{position:absolute;right:18px;bottom:12px;font-family:'Noto Sans KR';font-weight:900;font-size:13px;color:#b33;border:2px solid #b33;padding:2px 8px;transform:rotate(-8deg);opacity:0}
-  #card .stamp.show{opacity:.8}
+  #card .stamp{position:absolute;left:50%;top:50%;font-family:'Noto Sans KR';font-weight:900;font-size:72px;letter-spacing:.15em;color:#c22;border:7px solid #c22;border-radius:10px;padding:6px 26px 6px 36px;transform:translate(-50%,-50%) rotate(-12deg) scale(1.6);opacity:0;pointer-events:none;transition:opacity .15s, transform .25s cubic-bezier(.3,1.6,.5,1);mix-blend-mode:multiply}
+  #card .stamp.show{opacity:.85;transform:translate(-50%,-50%) rotate(-12deg) scale(1)}
 
   #dj{width:min(620px,100%);min-height:54px;font-size:16px;line-height:1.6;color:#d8cfe6;padding:0 6px}
   #dj .who{color:var(--amber);font-weight:700;margin-right:6px}
@@ -275,8 +275,8 @@ function sfxSkip(){
   for(let i=0;i<len;i++){ const k=i/len; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*k)*(1-k*.5); }
   const s=AC.createBufferSource(), f=AC.createBiquadFilter(), g=AC.createGain();
   s.buffer=b; f.type='highpass'; f.frequency.setValueAtTime(800,t); f.frequency.exponentialRampToValueAtTime(4000,t+.25);
-  g.gain.value=.22; s.connect(f).connect(g).connect(AC.destination); s.start(t);
-  tone(90,.12,'sine',.25,.22);
+  g.gain.value=.05; s.connect(f).connect(g).connect(AC.destination); s.start(t);
+  tone(90,.12,'sine',.07,.22);
 }
 
 /* ================= 상태 ================= */
