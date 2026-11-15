@@ -47,6 +47,8 @@
   #card.hidden{opacity:0;transform:translateY(16px) rotate(-.6deg)}
   #card .stamp{position:absolute;left:50%;top:50%;font-family:'Noto Sans KR';font-weight:900;font-size:72px;letter-spacing:.15em;color:#c22;border:7px solid #c22;border-radius:10px;padding:6px 26px 6px 36px;transform:translate(-50%,-50%) rotate(-12deg) scale(1.6);opacity:0;pointer-events:none;transition:opacity .15s, transform .25s cubic-bezier(.3,1.6,.5,1);mix-blend-mode:multiply}
   #card .stamp.show{opacity:.85;transform:translate(-50%,-50%) rotate(-12deg) scale(1)}
+  #card .stamp.read{color:#1f9d4a;border-color:#1f9d4a;border-radius:50%;width:190px;height:190px;padding:0 0 0 .15em;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:58px;box-shadow:inset 0 0 0 5px #efe6d2, inset 0 0 0 9px #1f9d4a}
+  #card .stamp.read.show{transform:translate(-50%,-50%) rotate(10deg) scale(1)}
 
   #dj{width:min(620px,100%);min-height:54px;font-size:16px;line-height:1.6;color:#d8cfe6;padding:0 6px}
   #dj .who{color:var(--amber);font-weight:700;margin-right:6px}
@@ -158,6 +160,7 @@ if(/github\.io$/.test(location.hostname)){ const g=document.createElement('scrip
         <div class="meta"><span class="from">보낸 사람 · <b id="from"></b></span><span id="ctime"></span></div>
         <div class="body" id="body"></div>
         <div class="stamp" id="stamp">넘김</div>
+        <div class="stamp read" id="stampRead">읽음</div>
       </div>
       <div id="dj"></div>
       <div id="choices"></div>
@@ -439,7 +442,7 @@ async function showStory(){
   const s=STORY[S.step];
   $('clock').textContent=s.time;
   if(s.type==='event') return knockEvent();
-  const card=$('card'); card.classList.add('hidden'); $('stamp').classList.remove('show'); $('dj').innerHTML='';
+  const card=$('card'); card.classList.add('hidden'); $('stamp').classList.remove('show'); $('stampRead').classList.remove('show'); $('dj').innerHTML='';
   await sleep(450);
   $('from').textContent=s.from; $('ctime').textContent=s.time+' 도착';
   $('body').textContent=''; card.classList.remove('hidden');
@@ -457,6 +460,7 @@ async function choose(read){
   const s=STORY[S.step];
   if(read) sfxRead(); else sfxSkip();
   if(read){
+    $('stampRead').classList.add('show');
     S.readCount++;
     if(s.type==='creepy'){ S.listeners+=30; S.dist+=18; if(s.knock) S.knockFlag=true; }
     else { S.listeners+=15; if(s.mild) S.dist+=5; }
@@ -501,7 +505,7 @@ async function knockEvent(){
 }
 
 async function finalRead(){
-  sfxRead();
+  sfxRead(); $('stampRead').classList.add('show');
   S.readFinal=true; S.dist=100; updateHUD(); glitch(); heartbeat(4);
   await djSay('"오늘도 사연 다 읽어줘서 고마워요. 마지막 사연은 제가 직접 읽을게요."','f01',{double:true});
   await sleep(600); glitch();
